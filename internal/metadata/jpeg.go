@@ -3,6 +3,7 @@ package metadata
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
@@ -191,6 +192,10 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 	if err != nil {
 		return fmt.Errorf("error walking EXIF tags: %w", err)
 	}
+
+	// Sort both lists alphabetically for consistent display
+	sort.Strings(sensitiveList)
+	sort.Strings(preservedList)
 
 	// Display grouped output
 	fmt.Println("   Metadata to be removed:")
