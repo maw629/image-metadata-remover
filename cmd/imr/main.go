@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/yourusername/image-metadata-remover/internal/fileutil"
+	"github.com/yourusername/image-metadata-remover/internal/processor"
 )
 
 const (
@@ -84,32 +87,57 @@ func run(config Config) error {
 		fmt.Printf("Output suffix: %s\n", config.suffix)
 	}
 
+	// Create processor
+	proc := processor.NewProcessor()
+
+	// Process each file
+	successCount := 0
+	errorCount := 0
+
 	for _, file := range config.files {
-		if err := processFile(file, config); err != nil {
-			return fmt.Errorf("failed to process %s: %w", file, err)
+		if err := processFile(file, config, proc); err != nil {
+			fmt.Fprintf(os.Stderr, "✗ %s: %v\n", file, err)
+			errorCount++
+		} else {
+			successCount++
 		}
 	}
 
 	if config.verbose {
-		fmt.Println("All files processed successfully!")
+		fmt.Printf("\nProcessing complete: %d succeeded, %d failed\n", successCount, errorCount)
+	}
+
+	if errorCount > 0 {
+		return fmt.Errorf("%d file(s) failed to process", errorCount)
 	}
 
 	return nil
 }
 
-func processFile(filename string, config Config) error {
+func processFile(filename string, config Config, proc *processor.Processor) error {
 	if config.verbose {
 		fmt.Printf("Processing: %s\n", filename)
 	}
 
-	// TODO: Implement actual image processing logic
-	// This is a dummy implementation for Phase 0
-	
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return fmt.Errorf("file not found: %s", filename)
+	// Check if file exists
+	if !fileutil.FileExists(filename) {
+		return fmt.Errorf("file not found")
 	}
 
-	fmt.Printf("✓ %s (metadata removal not yet implemented)\n", filename)
+	// Generate output path
+	outputPath := fileutil.GenerateOutputPath(filename, config.suffix)
+
+	// Check if output file already exists
+	if fileutil.FileExists(outputPath) {
+		return fmt.Errorf("output file already exists: %s", outputPath)
+	}
+
+	// Process the file
+	if err := proc.ProcessFile(filename, outputPath); err != nil {
+		return err
+	}
+
+	fmt.Printf("✓ %s -> %s\n", filename, outputPath)
 	
 	return nil
 }
