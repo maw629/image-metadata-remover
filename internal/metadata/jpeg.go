@@ -2,11 +2,13 @@ package metadata
 
 import (
 	"fmt"
-	"image/jpeg"
 	"os"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
+	
+	exifv3 "github.com/dsoprea/go-exif/v3"
+	jis "github.com/dsoprea/go-jpeg-image-structure/v2"
 )
 
 // JPEGHandler handles JPEG image metadata
@@ -23,42 +25,75 @@ func (h *JPEGHandler) SupportsFormat(format string) bool {
 }
 
 // RemoveMetadata removes sensitive EXIF metadata from JPEG files
+// while preserving non-sensitive tags
 func (h *JPEGHandler) RemoveMetadata(inputPath, outputPath string) error {
-	// Open input file
-	inputFile, err := os.Open(inputPath)
+	// Read the input file
+	inputData, err := os.ReadFile(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to open input file: %w", err)
-	}
-	defer inputFile.Close()
-
-	// Decode JPEG image
-	img, err := jpeg.Decode(inputFile)
-	if err != nil {
-		return fmt.Errorf("failed to decode JPEG: %w", err)
+		return fmt.Errorf("failed to read input file: %w", err)
 	}
 
-	// Get orientation from EXIF if present (we want to preserve this)
-	inputFile.Seek(0, 0)
-	orientation := h.getOrientation(inputFile)
+	// Parse JPEG structure
+	jmp := jis.NewJpegMediaParser()
+	intfc, err := jmp.ParseBytes(inputData)
+	if err != nil {
+		return fmt.Errorf("failed to parse JPEG: %w", err)
+	}
 
-	// Create output file
+	sl := intfc.(*jis.SegmentList)
+
+	// Try to get existing EXIF data
+	rootIfd, _, err := sl.Exif()
+	if err != nil {
+		if err == exifv3.ErrNoExif {
+			// No EXIF data - just copy the file
+			return os.WriteFile(outputPath, inputData, 0644)
+		}
+		return fmt.Errorf("failed to read EXIF: %w", err)
+	}
+
+	// Build filtered EXIF with only non-sensitive tags
+	filteredIb, hasPreserved, err := h.buildFilteredEXIF(rootIfd, nil)
+	if err != nil {
+		return fmt.Errorf("failed to filter EXIF: %w", err)
+	}
+
+	// If no tags preserved, just strip all EXIF
+	if !hasPreserved {
+		// Remove all EXIF and write output
+		_, err := sl.DropExif()
+		if err != nil {
+			return fmt.Errorf("failed to drop EXIF: %w", err)
+		}
+
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %w", err)
+		}
+		defer outputFile.Close()
+
+		if err := sl.Write(outputFile); err != nil {
+			return fmt.Errorf("failed to write output: %w", err)
+		}
+
+		return nil
+	}
+
+	// Set the filtered EXIF
+	if err := sl.SetExif(filteredIb); err != nil {
+		return fmt.Errorf("failed to set filtered EXIF: %w", err)
+	}
+
+	// Write the output file
 	outputFile, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer outputFile.Close()
 
-	// Encode JPEG without EXIF metadata
-	// We'll use high quality encoding
-	opts := &jpeg.Options{Quality: 95}
-	
-	if err := jpeg.Encode(outputFile, img, opts); err != nil {
-		return fmt.Errorf("failed to encode JPEG: %w", err)
+	if err := sl.Write(outputFile); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
 	}
-
-	// If we had orientation data, we could add minimal EXIF back
-	// For now, we're stripping everything as requested
-	_ = orientation
 
 	return nil
 }
@@ -174,7 +209,7 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 		len(sensitiveList)+len(preservedList), len(sensitiveList), len(preservedList))
 	
 	if len(sensitiveList) == 0 {
-		fmt.Println("   ⚠️  No sensitive metadata found, but all EXIF will be stripped")
+		fmt.Println("   ✅ No sensitive metadata found - file is clean!")
 	}
 
 	return nil
@@ -201,67 +236,143 @@ func (w *metadataCollector) Walk(name exif.FieldName, tag *tiff.Tag) error {
 	return nil
 }
 
-// getOrientation extracts the orientation tag from EXIF data
-func (h *JPEGHandler) getOrientation(file *os.File) int {
-	x, err := exif.Decode(file)
-	if err != nil {
-		return 1 // Default orientation
+// buildFilteredEXIF creates a new EXIF IFD builder with only non-sensitive tags
+func (h *JPEGHandler) buildFilteredEXIF(rootIfd *exifv3.Ifd, rawExif []byte) (*exifv3.IfdBuilder, bool, error) {
+	// Define sensitive tag IDs
+	sensitiveTags := h.getSensitiveTagIDs()
+
+	// Create a new IFD builder from existing chain
+	rootIb := exifv3.NewIfdBuilderFromExistingChain(rootIfd)
+
+	// Track if we preserved any tags
+	preservedCount := 0
+
+	// Remove sensitive tags from all IFDs
+	if err := h.removeSensitiveTags(rootIb, sensitiveTags, &preservedCount); err != nil {
+		return nil, false, err
 	}
 
-	tag, err := x.Get(exif.Orientation)
-	if err != nil {
-		return 1
-	}
-
-	orientation, err := tag.Int(0)
-	if err != nil {
-		return 1
-	}
-
-	return orientation
+	return rootIb, preservedCount > 0, nil
 }
 
-// stripSensitiveEXIF removes sensitive EXIF tags while preserving basic ones
-// This is a more advanced version that could be implemented in the future
-func (h *JPEGHandler) stripSensitiveEXIF(x *exif.Exif) error {
-	// For Phase 1, we're stripping all EXIF by re-encoding the image
-	// A future enhancement could selectively preserve tags
-	
-	// Tags we might want to preserve in the future:
-	// - Orientation
-	// - ColorSpace
-	// - PixelXDimension
-	// - PixelYDimension
+// removeSensitiveTags removes sensitive tags from IFD builder recursively
+func (h *JPEGHandler) removeSensitiveTags(ib *exifv3.IfdBuilder, sensitiveTags map[uint16]bool, preservedCount *int) error {
+	// Delete sensitive tags by ID
+	for tagID := range sensitiveTags {
+		n, err := ib.DeleteAll(tagID)
+		if err != nil {
+			// Continue on error (tag might not exist)
+			continue
+		}
+		// Don't count deleted tags
+		_ = n
+	}
 
-	// Tags to remove (sensitive):
-	// - GPS data
-	// - Camera make/model
-	// - Lens info
-	// - Serial numbers
-	// - Software
-	// - Artist/Copyright
-	
+	// Count remaining (preserved) tags
+	tags := ib.Tags()
+	*preservedCount += len(tags)
+
+	// Handle child IFDs - we need to remove the GPS IFD entirely
+	// Try to get GPS IFD (tag 0x8825)
+	_, err := ib.ChildWithTagId(0x8825)
+	if err == nil {
+		// GPS IFD exists, delete it
+		_, err := ib.DeleteAll(0x8825)
+		if err != nil {
+			// Continue on error
+		}
+	}
+
+	// Process EXIF SubIFD if present (tag 0x8769)
+	exifIb, err := ib.ChildWithTagId(0x8769)
+	if err == nil {
+		// Recursively remove sensitive tags from EXIF SubIFD
+		if err := h.removeSensitiveTags(exifIb, sensitiveTags, preservedCount); err != nil {
+			// Continue on error
+		}
+	}
+
+	// Process next IFD in chain (IFD1, typically thumbnail)
+	nextIb, err := ib.NextIb()
+	if err == nil && nextIb != nil {
+		if err := h.removeSensitiveTags(nextIb, sensitiveTags, preservedCount); err != nil {
+			// Continue on error
+		}
+	}
+
 	return nil
 }
 
-// rotateImage rotates an image based on EXIF orientation
-// This would be used in future enhancements to handle orientation properly
-func rotateImage(orientation int) {
-	// Orientation values:
-	// 1 = Normal
-	// 3 = Rotate 180
-	// 6 = Rotate 90 CW
-	// 8 = Rotate 270 CW
-	
-	// For Phase 1, we're not implementing rotation
-	// The image is re-encoded in its current orientation
-}
+// getSensitiveTagIDs returns a map of sensitive EXIF tag IDs
+func (h *JPEGHandler) getSensitiveTagIDs() map[uint16]bool {
+	return map[uint16]bool{
+		// GPS tags (all GPS tags are sensitive)
+		// These are in the GPS IFD which we skip entirely
+		0x0000: true, // GPSVersionID
+		0x0001: true, // GPSLatitudeRef
+		0x0002: true, // GPSLatitude
+		0x0003: true, // GPSLongitudeRef
+		0x0004: true, // GPSLongitude
+		0x0005: true, // GPSAltitudeRef
+		0x0006: true, // GPSAltitude
+		0x0007: true, // GPSTimeStamp
+		0x0008: true, // GPSSatellites
+		0x0009: true, // GPSStatus
+		0x000A: true, // GPSMeasureMode
+		0x000B: true, // GPSDOP
+		0x000C: true, // GPSSpeedRef
+		0x000D: true, // GPSSpeed
+		0x000E: true, // GPSTrackRef
+		0x000F: true, // GPSTrack
+		0x0010: true, // GPSImgDirectionRef
+		0x0011: true, // GPSImgDirection
+		0x0012: true, // GPSMapDatum
+		0x0013: true, // GPSDestLatitudeRef
+		0x0014: true, // GPSDestLatitude
+		0x0015: true, // GPSDestLongitudeRef
+		0x0016: true, // GPSDestLongitude
+		0x0017: true, // GPSDestBearingRef
+		0x0018: true, // GPSDestBearing
+		0x0019: true, // GPSDestDistanceRef
+		0x001A: true, // GPSDestDistance
+		0x001B: true, // GPSProcessingMethod
+		0x001C: true, // GPSAreaInformation
+		0x001D: true, // GPSDateStamp
+		0x001E: true, // GPSDifferential
 
-// encodeJPEGWithMinimalEXIF would encode JPEG with only basic EXIF tags
-// This is a placeholder for future enhancement
-func encodeJPEGWithMinimalEXIF(orientation int) {
-	// This would create a minimal EXIF header with only orientation
-	// For Phase 1, we're just stripping everything
+		// Camera/Device information
+		0x010F: true, // Make
+		0x0110: true, // Model
+		0x0131: true, // Software
+		0xA433: true, // LensMake
+		0xA434: true, // LensModel
+		0xA435: true, // LensSerialNumber
+
+		// Serial numbers
+		0xA431: true, // BodySerialNumber
+		0x927C: true, // MakerNote (contains serial numbers)
+
+		// Creator/Copyright information
+		0x013B: true, // Artist
+		0x8298: true, // Copyright
+		0x9286: true, // UserComment
+		0x010E: true, // ImageDescription
+
+		// Windows-specific metadata
+		0x9C9B: true, // XPTitle
+		0x9C9C: true, // XPComment
+		0x9C9D: true, // XPAuthor
+		0x9C9E: true, // XPKeywords
+		0x9C9F: true, // XPSubject
+
+		// Timestamps (making these sensitive too)
+		0x0132: true, // DateTime (Modify Date)
+		0x9003: true, // DateTimeOriginal
+		0x9004: true, // DateTimeDigitized
+		0x9290: true, // SubSecTime
+		0x9291: true, // SubSecTimeOriginal
+		0x9292: true, // SubSecTimeDigitized
+	}
 }
 
 // Ensure JPEGHandler implements Handler interface
