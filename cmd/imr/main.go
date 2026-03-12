@@ -21,6 +21,7 @@ type Config struct {
 	suffix      string
 	verbose     bool
 	dryRun      bool
+	recursive   bool
 }
 
 func main() {
@@ -52,6 +53,8 @@ func parseFlags() Config {
 	flag.StringVar(&config.suffix, "suffix", "_imr", "Suffix to append to output filenames")
 	flag.BoolVar(&config.verbose, "verbose", false, "Enable verbose output")
 	flag.BoolVar(&config.dryRun, "dry-run", false, "Preview metadata without removing (no output file created)")
+	flag.BoolVar(&config.recursive, "recursive", false, "Process directories recursively")
+	flag.BoolVar(&config.recursive, "r", false, "Process directories recursively (shorthand)")
 
 	flag.Parse()
 
@@ -65,7 +68,7 @@ func printVersion() {
 }
 
 func printUsage() {
-	fmt.Printf("Usage: %s [OPTIONS] <image_files...>\n\n", appName)
+	fmt.Printf("Usage: %s [OPTIONS] <image_files_or_directories...>\n\n", appName)
 	fmt.Println("Image Metadata Remover - Remove sensitive metadata from images")
 	fmt.Println()
 	fmt.Println("Options:")
@@ -77,22 +80,42 @@ func printUsage() {
 	fmt.Println("Examples:")
 	fmt.Printf("  %s photo.jpg\n", appName)
 	fmt.Printf("  %s --dry-run photo.jpg\n", appName)
+	fmt.Printf("  %s -r images/\n", appName)
+	fmt.Printf("  %s -recursive -verbose photos/\n", appName)
 	fmt.Printf("  %s -suffix _clean photo1.jpg photo2.png\n", appName)
-	fmt.Printf("  %s -verbose images/*.jpg\n", appName)
 	fmt.Println()
 	fmt.Println("Output files will be saved with the specified suffix (default: _imr)")
 	fmt.Println("Example: photo.jpg -> photo_imr.jpg")
 	fmt.Println()
 	fmt.Println("Dry-run mode shows metadata without creating output files")
+	fmt.Println("Recursive mode processes all images in subdirectories")
 }
 
 func run(config Config) error {
+	// Collect all files to process (expand directories if needed)
+	var allFiles []string
+	
+	for _, path := range config.files {
+		files, err := fileutil.CollectImageFiles(path, config.recursive)
+		if err != nil {
+			return fmt.Errorf("failed to collect files from %s: %w", path, err)
+		}
+		allFiles = append(allFiles, files...)
+	}
+
+	if len(allFiles) == 0 {
+		return fmt.Errorf("no image files found to process")
+	}
+
 	if config.verbose {
-		fmt.Printf("Processing %d file(s)...\n", len(config.files))
+		fmt.Printf("Processing %d file(s)...\n", len(allFiles))
 		if config.dryRun {
 			fmt.Println("Mode: DRY-RUN (preview only, no files will be modified)")
 		} else {
 			fmt.Printf("Output suffix: %s\n", config.suffix)
+		}
+		if config.recursive {
+			fmt.Println("Mode: RECURSIVE")
 		}
 	}
 
@@ -103,7 +126,7 @@ func run(config Config) error {
 	successCount := 0
 	errorCount := 0
 
-	for _, file := range config.files {
+	for _, file := range allFiles {
 		if err := processFile(file, config, proc); err != nil {
 			fmt.Fprintf(os.Stderr, "✗ %s: %v\n", file, err)
 			errorCount++
