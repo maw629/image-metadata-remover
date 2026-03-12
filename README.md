@@ -53,7 +53,7 @@ imr -r -verbose photos/
 ```
 --dry-run
     Preview metadata without removing (no output file created)
-    Shows grouped output:
+    Shows grouped and alphabetically sorted output:
       - "Metadata to be removed" (sensitive tags)
       - "Metadata to be preserved" (technical tags)
     Includes summary with tag counts
@@ -124,22 +124,29 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
 
 ## Development Status
 
-**Current Phase**: Phase 2 Enhancement - Selective EXIF Preservation ✓
+**Current Phase**: Phase 2 Enhancement - Complete ✓
 
 **Completed Features**:
 - ✅ JPEG metadata removal with selective preservation (Phase 1 & 2 Enhancement)
-- ✅ Dry-run mode to preview all metadata with grouping (Phase 1)
+- ✅ Dry-run mode with grouped, alphabetically sorted metadata preview (Phase 1)
 - ✅ Multiple file processing (Phase 1)
 - ✅ Custom output suffix (Phase 1)
 - ✅ Recursive directory processing (Phase 2)
 - ✅ Smart path handling - mix files and directories (Phase 2)
 - ✅ Selective EXIF preservation - keeps technical tags, removes sensitive ones (Phase 2 Enhancement)
+- ✅ Tag classification fixes - MakerNote, GPSInfoIFDPointer, SubSec timestamps, thumbnails (Phase 2 Enhancement)
+- ✅ Alphabetically sorted tag display in dry-run mode (Phase 2 Enhancement)
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
 - Phase 1: JPEG support with EXIF removal and dry-run mode ✅
 - Phase 2: Recursive directory processing ✅
 - Phase 2 Enhancement: Selective EXIF preservation ✅
+  - Selective preservation implementation ✅
+  - MakerNote and GPSInfoIFDPointer fixes ✅
+  - SubSec timestamp fixes ✅
+  - Thumbnail tag corruption fixes ✅
+  - Alphabetical sorting ✅
 - Phase 3: Extended format support (PNG, WebP, TIFF, GIF)
 - Phase 4: Progress indicators and configuration file support
 - Phase 5: Comprehensive testing, benchmarks, and documentation
