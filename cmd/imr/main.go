@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/yourusername/image-metadata-remover/internal/fileutil"
+	"github.com/yourusername/image-metadata-remover/internal/processor"
 )
 
 const (
@@ -17,6 +20,7 @@ type Config struct {
 	files       []string
 	suffix      string
 	verbose     bool
+	dryRun      bool
 }
 
 func main() {
@@ -47,6 +51,7 @@ func parseFlags() Config {
 	flag.BoolVar(&config.showHelp, "h", false, "Show help message (shorthand)")
 	flag.StringVar(&config.suffix, "suffix", "_imr", "Suffix to append to output filenames")
 	flag.BoolVar(&config.verbose, "verbose", false, "Enable verbose output")
+	flag.BoolVar(&config.dryRun, "dry-run", false, "Preview metadata without removing (no output file created)")
 
 	flag.Parse()
 
@@ -71,45 +76,82 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Printf("  %s photo.jpg\n", appName)
+	fmt.Printf("  %s --dry-run photo.jpg\n", appName)
 	fmt.Printf("  %s -suffix _clean photo1.jpg photo2.png\n", appName)
 	fmt.Printf("  %s -verbose images/*.jpg\n", appName)
 	fmt.Println()
 	fmt.Println("Output files will be saved with the specified suffix (default: _imr)")
 	fmt.Println("Example: photo.jpg -> photo_imr.jpg")
+	fmt.Println()
+	fmt.Println("Dry-run mode shows metadata without creating output files")
 }
 
 func run(config Config) error {
 	if config.verbose {
 		fmt.Printf("Processing %d file(s)...\n", len(config.files))
-		fmt.Printf("Output suffix: %s\n", config.suffix)
+		if config.dryRun {
+			fmt.Println("Mode: DRY-RUN (preview only, no files will be modified)")
+		} else {
+			fmt.Printf("Output suffix: %s\n", config.suffix)
+		}
 	}
 
+	// Create processor
+	proc := processor.NewProcessor()
+
+	// Process each file
+	successCount := 0
+	errorCount := 0
+
 	for _, file := range config.files {
-		if err := processFile(file, config); err != nil {
-			return fmt.Errorf("failed to process %s: %w", file, err)
+		if err := processFile(file, config, proc); err != nil {
+			fmt.Fprintf(os.Stderr, "✗ %s: %v\n", file, err)
+			errorCount++
+		} else {
+			successCount++
 		}
 	}
 
 	if config.verbose {
-		fmt.Println("All files processed successfully!")
+		fmt.Printf("\nProcessing complete: %d succeeded, %d failed\n", successCount, errorCount)
+	}
+
+	if errorCount > 0 {
+		return fmt.Errorf("%d file(s) failed to process", errorCount)
 	}
 
 	return nil
 }
 
-func processFile(filename string, config Config) error {
+func processFile(filename string, config Config, proc *processor.Processor) error {
 	if config.verbose {
 		fmt.Printf("Processing: %s\n", filename)
 	}
 
-	// TODO: Implement actual image processing logic
-	// This is a dummy implementation for Phase 0
-	
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return fmt.Errorf("file not found: %s", filename)
+	// Check if file exists
+	if !fileutil.FileExists(filename) {
+		return fmt.Errorf("file not found")
 	}
 
-	fmt.Printf("✓ %s (metadata removal not yet implemented)\n", filename)
+	// If dry-run mode, preview metadata instead
+	if config.dryRun {
+		return proc.PreviewMetadata(filename)
+	}
+
+	// Generate output path
+	outputPath := fileutil.GenerateOutputPath(filename, config.suffix)
+
+	// Check if output file already exists
+	if fileutil.FileExists(outputPath) {
+		return fmt.Errorf("output file already exists: %s", outputPath)
+	}
+
+	// Process the file
+	if err := proc.ProcessFile(filename, outputPath); err != nil {
+		return err
+	}
+
+	fmt.Printf("✓ %s -> %s\n", filename, outputPath)
 	
 	return nil
 }
