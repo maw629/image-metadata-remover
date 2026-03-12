@@ -32,6 +32,9 @@ Download the latest release from the [releases page](https://github.com/youruser
 # Process a single image
 imr photo.jpg
 
+# Preview metadata without removing (dry-run)
+imr --dry-run photo.jpg
+
 # Process multiple images
 imr photo1.jpg photo2.png photo3.webp
 
@@ -45,6 +48,9 @@ imr -verbose photo.jpg
 ### Options
 
 ```
+--dry-run
+    Preview metadata without removing (no output file created)
+    
 -suffix string
     Suffix to append to output filenames (default "_imr")
     
@@ -90,7 +96,13 @@ Output files are saved with the specified suffix (default: `_imr`):
 
 ## Development Status
 
-**Current Phase**: Phase 0 - Project Scaffolding ✓
+**Current Phase**: Phase 1 - JPEG Support ✓
+
+**Features**:
+- ✅ JPEG metadata removal
+- ✅ Dry-run mode to preview metadata
+- ✅ Multiple file processing
+- ✅ Custom output suffix
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
