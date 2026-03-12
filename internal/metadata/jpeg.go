@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/tiff"
 )
 
 // JPEGHandler handles JPEG image metadata
@@ -62,7 +63,7 @@ func (h *JPEGHandler) RemoveMetadata(inputPath, outputPath string) error {
 	return nil
 }
 
-// PreviewMetadata displays the metadata that would be removed
+// PreviewMetadata displays all metadata in the image file
 func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 	// Open input file
 	inputFile, err := os.Open(inputPath)
@@ -80,99 +81,113 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 	}
 
 	fmt.Printf("📄 %s\n", inputPath)
-	fmt.Println("   Metadata to be removed:")
+	fmt.Println("   All EXIF metadata in this image:")
+	fmt.Println()
 
-	// Track if any sensitive data found
-	foundSensitive := false
-
-	// Check for GPS data
-	if lat, err := x.Get(exif.GPSLatitude); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • GPS Latitude: %v\n", lat)
-	}
-	if lon, err := x.Get(exif.GPSLongitude); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • GPS Longitude: %v\n", lon)
-	}
-	if alt, err := x.Get(exif.GPSAltitude); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • GPS Altitude: %v\n", alt)
-	}
-	if gpsTime, err := x.Get(exif.GPSTimeStamp); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • GPS Timestamp: %v\n", gpsTime)
-	}
-
-	// Check for camera info
-	if make, err := x.Get(exif.Make); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Camera Make: %v\n", make)
-	}
-	if model, err := x.Get(exif.Model); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Camera Model: %v\n", model)
-	}
-	if software, err := x.Get(exif.Software); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Software: %v\n", software)
-	}
-
-	// Check for lens info
-	if lensModel, err := x.Get(exif.LensModel); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Lens Model: %v\n", lensModel)
-	}
-	if lensMake, err := x.Get(exif.LensMake); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Lens Make: %v\n", lensMake)
-	}
-
-	// Check for creator info
-	if artist, err := x.Get(exif.Artist); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Artist: %v\n", artist)
-	}
-	if copyright, err := x.Get(exif.Copyright); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • Copyright: %v\n", copyright)
+	// Define sensitive tags that will be removed
+	sensitiveTags := map[string]bool{
+		// GPS data
+		"GPSLatitude":          true,
+		"GPSLongitude":         true,
+		"GPSAltitude":          true,
+		"GPSTimeStamp":         true,
+		"GPSDateStamp":         true,
+		"GPSProcessingMethod":  true,
+		"GPSVersionID":         true,
+		"GPSLatitudeRef":       true,
+		"GPSLongitudeRef":      true,
+		"GPSAltitudeRef":       true,
+		"GPSMapDatum":          true,
+		"GPSSatelites":         true,
+		"GPSImgDirection":      true,
+		"GPSImgDirectionRef":   true,
+		"GPSDestBearing":       true,
+		"GPSDestBearingRef":    true,
+		"GPSSpeed":             true,
+		"GPSSpeedRef":          true,
+		"GPSTrack":             true,
+		"GPSTrackRef":          true,
+		"GPSAreaInformation":   true,
+		"GPSDifferential":      true,
+		// Camera info
+		"Make":                 true,
+		"Model":                true,
+		"Software":             true,
+		// Lens info
+		"LensModel":            true,
+		"LensMake":             true,
+		"LensSerialNumber":     true,
+		// Serial numbers
+		"BodySerialNumber":     true,
+		"InternalSerialNumber": true,
+		"SerialNumber":         true,
+		// Creator/owner info
+		"Artist":               true,
+		"Copyright":            true,
+		"XPComment":            true,
+		"XPAuthor":             true,
+		"UserComment":          true,
+		"ImageDescription":     true,
+		// Timestamps
+		"DateTime":             true,
+		"DateTimeOriginal":     true,
+		"DateTimeDigitized":    true,
 	}
 
-	// Check datetime
-	if dateTime, err := x.Get(exif.DateTime); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • DateTime: %v\n", dateTime)
-	}
-	if dateTimeOrig, err := x.Get(exif.DateTimeOriginal); err == nil {
-		foundSensitive = true
-		fmt.Printf("   • DateTime Original: %v\n", dateTimeOrig)
+	// Create a walker to display all tags
+	tagCount := 0
+	sensitiveCount := 0
+	preservedCount := 0
+
+	walker := &metadataWalker{
+		sensitiveTags:   sensitiveTags,
+		tagCount:        &tagCount,
+		sensitiveCount:  &sensitiveCount,
+		preservedCount:  &preservedCount,
 	}
 
-	// Show preserved metadata
-	fmt.Println("   Metadata to be preserved:")
-	preserved := false
+	// Walk through all EXIF tags
+	err = x.Walk(walker)
+	if err != nil {
+		return fmt.Errorf("error walking EXIF tags: %w", err)
+	}
+
+	// Summary
+	fmt.Println()
+	fmt.Printf("   Summary: %d total tags (%d sensitive, %d preserved)\n", 
+		tagCount, sensitiveCount, preservedCount)
 	
-	if orientation, err := x.Get(exif.Orientation); err == nil {
-		preserved = true
-		fmt.Printf("   • Orientation: %v\n", orientation)
-	}
-	if width, err := x.Get(exif.PixelXDimension); err == nil {
-		preserved = true
-		fmt.Printf("   • Width: %v pixels\n", width)
-	}
-	if height, err := x.Get(exif.PixelYDimension); err == nil {
-		preserved = true
-		fmt.Printf("   • Height: %v pixels\n", height)
+	if sensitiveCount == 0 {
+		fmt.Println("   ⚠️  No sensitive metadata found, but all EXIF will be stripped")
 	}
 
-	if !preserved {
-		fmt.Println("   • Image dimensions (inherent)")
-		fmt.Println("   • Color space (inherent)")
-	}
+	return nil
+}
 
-	if !foundSensitive {
-		fmt.Println("   • No sensitive metadata found (will strip all EXIF)")
-	}
+// metadataWalker implements the exif.Walker interface
+type metadataWalker struct {
+	sensitiveTags   map[string]bool
+	tagCount        *int
+	sensitiveCount  *int
+	preservedCount  *int
+}
 
+func (w *metadataWalker) Walk(name exif.FieldName, tag *tiff.Tag) error {
+	*w.tagCount++
+	tagName := string(name)
+	isSensitive := w.sensitiveTags[tagName]
+	
+	// Format the tag value
+	tagValue := fmt.Sprintf("%v", tag)
+	
+	if isSensitive {
+		*w.sensitiveCount++
+		fmt.Printf("   🔴 %s: %s [WILL BE REMOVED]\n", tagName, tagValue)
+	} else {
+		*w.preservedCount++
+		fmt.Printf("   🟢 %s: %s [PRESERVED]\n", tagName, tagValue)
+	}
+	
 	return nil
 }
 
