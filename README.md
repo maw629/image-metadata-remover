@@ -120,7 +120,8 @@ Output files are saved with the specified suffix (default: `_imr`):
 - Phase 1: JPEG support with EXIF removal and dry-run mode ✅
 - Phase 2: Recursive directory processing ✅
 - Phase 3: Extended format support (PNG, WebP, TIFF, GIF)
-- Phase 4: Testing, benchmarks, and polish
+- Phase 4: Progress indicators and configuration file support
+- Phase 5: Comprehensive testing, benchmarks, and documentation
 
 ## Contributing
 
