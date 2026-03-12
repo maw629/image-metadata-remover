@@ -168,6 +168,9 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 		"DateTime":             true,
 		"DateTimeOriginal":     true,
 		"DateTimeDigitized":    true,
+		"SubSecTime":           true,
+		"SubSecTimeOriginal":   true,
+		"SubSecTimeDigitized":  true,
 	}
 
 	// Collect tags into groups
