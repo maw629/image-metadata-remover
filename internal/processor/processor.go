@@ -21,6 +21,7 @@ func NewProcessor() *Processor {
 	// Register handlers
 	p.handlers[FormatJPEG] = metadata.NewJPEGHandler()
 	p.handlers[FormatPNG] = metadata.NewPNGHandler()
+	p.handlers[FormatWebP] = metadata.NewWebPHandler()
 	
 	return p
 }
