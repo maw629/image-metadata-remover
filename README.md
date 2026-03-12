@@ -35,14 +35,17 @@ imr photo.jpg
 # Preview metadata without removing (dry-run)
 imr --dry-run photo.jpg
 
-# Process multiple images
-imr photo1.jpg photo2.png photo3.webp
+# Process directory recursively
+imr -r photos/
+
+# Process multiple files and directories
+imr photo1.jpg photo2.png images/
 
 # Use custom suffix
 imr -suffix _clean vacation/*.jpg
 
-# Verbose output
-imr -verbose photo.jpg
+# Verbose recursive processing
+imr -r -verbose photos/
 ```
 
 ### Options
@@ -50,6 +53,9 @@ imr -verbose photo.jpg
 ```
 --dry-run
     Preview metadata without removing (no output file created)
+
+-r, --recursive
+    Process directories recursively
     
 -suffix string
     Suffix to append to output filenames (default "_imr")
@@ -88,27 +94,33 @@ Output files are saved with the specified suffix (default: `_imr`):
 
 ## Supported Formats
 
-- ✅ JPEG (.jpg, .jpeg)
-- ✅ PNG (.png)
-- ✅ WebP (.webp)
-- ✅ TIFF (.tiff, .tif)
-- ✅ GIF (.gif)
+**Currently Supported**:
+- ✅ JPEG (.jpg, .jpeg) - Full EXIF metadata removal
+
+**Planned Support** (Phase 3):
+- 🔜 PNG (.png) - tEXt, iTXt, zTXt chunks
+- 🔜 WebP (.webp)
+- 🔜 TIFF (.tiff, .tif)
+- 🔜 GIF (.gif)
 
 ## Development Status
 
-**Current Phase**: Phase 1 - JPEG Support ✓
+**Current Phase**: Phase 2 - Enhanced Features ✓
 
-**Features**:
-- ✅ JPEG metadata removal
-- ✅ Dry-run mode to preview metadata
-- ✅ Multiple file processing
-- ✅ Custom output suffix
+**Completed Features**:
+- ✅ JPEG metadata removal (Phase 1)
+- ✅ Dry-run mode to preview all metadata (Phase 1)
+- ✅ Multiple file processing (Phase 1)
+- ✅ Custom output suffix (Phase 1)
+- ✅ Recursive directory processing (Phase 2)
+- ✅ Smart path handling - mix files and directories (Phase 2)
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
-- Phase 1: JPEG support with EXIF removal (In Progress)
-- Phase 2: Extended format support (PNG, WebP, TIFF, GIF)
-- Phase 3: Advanced features (recursive processing, dry-run mode)
+- Phase 1: JPEG support with EXIF removal and dry-run mode ✅
+- Phase 2: Recursive directory processing ✅
+- Phase 3: Extended format support (PNG, WebP, TIFF, GIF)
+- Phase 4: Testing, benchmarks, and polish
 
 ## Contributing
 
