@@ -154,6 +154,9 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 		"BodySerialNumber":     true,
 		"InternalSerialNumber": true,
 		"SerialNumber":         true,
+		"MakerNote":            true, // Contains proprietary camera data, often includes serial numbers
+		// GPS pointer
+		"GPSInfoIFDPointer":    true, // Pointer to GPS IFD, removed when GPS IFD is deleted
 		// Creator/owner info
 		"Artist":               true,
 		"Copyright":            true,
@@ -350,7 +353,10 @@ func (h *JPEGHandler) getSensitiveTagIDs() map[uint16]bool {
 
 		// Serial numbers
 		0xA431: true, // BodySerialNumber
-		0x927C: true, // MakerNote (contains serial numbers)
+		0x927C: true, // MakerNote (contains serial numbers and proprietary camera data)
+
+		// GPS pointer (gets removed when GPS IFD is deleted)
+		0x8825: true, // GPSInfoIFDPointer
 
 		// Creator/Copyright information
 		0x013B: true, // Artist
