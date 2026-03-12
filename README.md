@@ -53,6 +53,10 @@ imr -r -verbose photos/
 ```
 --dry-run
     Preview metadata without removing (no output file created)
+    Shows grouped and alphabetically sorted output:
+      - "Metadata to be removed" (sensitive tags)
+      - "Metadata to be preserved" (technical tags)
+    Includes summary with tag counts
 
 -r, --recursive
     Process directories recursively
@@ -76,49 +80,73 @@ Output files are saved with the specified suffix (default: `_imr`):
 - `photo.jpg` → `photo_imr.jpg`
 - `image.png` → `image_imr.png`
 
-## Metadata Removal
+## Metadata Handling
+
+IMR uses **selective preservation** - it removes only sensitive metadata while keeping technical image information intact.
 
 ### Removed (Sensitive Data)
-- GPS coordinates and location data
-- Camera make, model, and serial numbers
-- Lens information
-- Software and editing history
-- Copyright and creator information
-- Timestamps (optional)
+- **GPS data**: All location information (latitude, longitude, altitude, timestamps)
+- **Camera/Lens info**: Make, model, serial numbers
+- **Software**: Editing software and version information
+- **Creator info**: Artist, copyright, comments, descriptions
+- **Timestamps**: Creation, modification, digitization dates
+- **Serial numbers**: Body and lens serial numbers
 
-### Preserved (Basic Data)
-- Image dimensions
-- Color space
-- Orientation
-- Basic quality settings
+### Preserved (Technical Data)
+- **Image properties**: Dimensions, resolution, color space, orientation
+- **Exposure settings**: ISO, aperture, shutter speed, focal length
+- **Technical tags**: Flash, metering mode, white balance, exposure mode
+- **Quality settings**: Compression, sharpness, saturation, contrast
+- **Format metadata**: EXIF version, component configuration
+
+**Example**: A typical JPEG with 59 EXIF tags will have 18 sensitive tags removed and 41 technical tags preserved.
+
+### How It Works
+
+1. **Parse EXIF structure**: Read all existing EXIF tags from the image
+2. **Filter by category**: Identify which tags are sensitive (40+ tag IDs)
+3. **Remove GPS IFD**: Completely drop the GPS sub-directory
+4. **Rebuild EXIF**: Create new EXIF block with only non-sensitive tags
+5. **Write output**: Save image with filtered EXIF metadata
+
+The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation without re-encoding the image data, preserving maximum quality.
 
 ## Supported Formats
 
 **Currently Supported**:
-- ✅ JPEG (.jpg, .jpeg) - Full EXIF metadata removal
+- ✅ JPEG (.jpg, .jpeg) - Selective EXIF preservation (removes sensitive tags, keeps technical ones)
 
 **Planned Support** (Phase 3):
-- 🔜 PNG (.png) - tEXt, iTXt, zTXt chunks
-- 🔜 WebP (.webp)
-- 🔜 TIFF (.tiff, .tif)
-- 🔜 GIF (.gif)
+- 🔜 PNG (.png) - tEXt, iTXt, zTXt chunks with selective preservation
+- 🔜 WebP (.webp) - Metadata chunk handling
+- 🔜 TIFF (.tiff, .tif) - EXIF handling (similar to JPEG)
+- 🔜 GIF (.gif) - Comment and extension block handling
 
 ## Development Status
 
-**Current Phase**: Phase 2 - Enhanced Features ✓
+**Current Phase**: Phase 2 Enhancement - Complete ✓
 
 **Completed Features**:
-- ✅ JPEG metadata removal (Phase 1)
-- ✅ Dry-run mode to preview all metadata (Phase 1)
+- ✅ JPEG metadata removal with selective preservation (Phase 1 & 2 Enhancement)
+- ✅ Dry-run mode with grouped, alphabetically sorted metadata preview (Phase 1)
 - ✅ Multiple file processing (Phase 1)
 - ✅ Custom output suffix (Phase 1)
 - ✅ Recursive directory processing (Phase 2)
 - ✅ Smart path handling - mix files and directories (Phase 2)
+- ✅ Selective EXIF preservation - keeps technical tags, removes sensitive ones (Phase 2 Enhancement)
+- ✅ Tag classification fixes - MakerNote, GPSInfoIFDPointer, SubSec timestamps, thumbnails (Phase 2 Enhancement)
+- ✅ Alphabetically sorted tag display in dry-run mode (Phase 2 Enhancement)
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
 - Phase 1: JPEG support with EXIF removal and dry-run mode ✅
 - Phase 2: Recursive directory processing ✅
+- Phase 2 Enhancement: Selective EXIF preservation ✅
+  - Selective preservation implementation ✅
+  - MakerNote and GPSInfoIFDPointer fixes ✅
+  - SubSec timestamp fixes ✅
+  - Thumbnail tag corruption fixes ✅
+  - Alphabetical sorting ✅
 - Phase 3: Extended format support (PNG, WebP, TIFF, GIF)
 - Phase 4: Progress indicators and configuration file support
 - Phase 5: Comprehensive testing, benchmarks, and documentation

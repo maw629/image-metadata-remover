@@ -36,6 +36,16 @@ go.work
 *_imr.*
 *_cleaned.*
 
+# Test images (except sample.jpg which is committed)
+/testdata/*.jpg
+!/testdata/sample.jpg
+/testdata/*.jpeg
+/testdata/*.png
+/testdata/*.gif
+/testdata/*.webp
+/testdata/*.tiff
+/testdata/*.tif
+
 # Debug and profiling
 cpu.prof
 mem.prof
