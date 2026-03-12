@@ -116,18 +116,31 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
 **Currently Supported**:
 - ✅ JPEG (.jpg, .jpeg) - Selective EXIF preservation (removes sensitive tags, keeps technical ones)
 
+**Currently Supported Formats**:
+- ✅ JPEG/JPG (.jpg, .jpeg) - All case variations supported
+  - Selective EXIF preservation
+  - Removes: GPS, device info, lens info, serial numbers, timestamps, creator info
+  - Preserves: Exposure settings, resolution, orientation, color space, etc.
+- ✅ PNG (.png) - All case variations supported
+  - Selective chunk preservation
+  - Removes: tEXt/zTXt/iTXt chunks with sensitive keys (Author, Copyright, Comment, Software, Title, etc.)
+  - Removes: eXIf chunks with sensitive EXIF data (GPS, device info, timestamps)
+  - Removes: tIME chunks (modification timestamps)
+  - Preserves: Technical chunks (IHDR, IDAT, PLTE, gAMA, cHRM, sRGB, iCCP, pHYs, etc.)
+
 **Planned Support** (Phase 3):
-- 🔜 PNG (.png) - tEXt, iTXt, zTXt chunks with selective preservation
-- 🔜 WebP (.webp) - Metadata chunk handling
+- 🔜 WebP (.webp) - RIFF container with EXIF/XMP metadata handling
+- 🔜 HEIC/HEIF (.heic, .heif) - Modern smartphone format (complex ISOBMFF container)
 - 🔜 TIFF (.tiff, .tif) - EXIF handling (similar to JPEG)
 - 🔜 GIF (.gif) - Comment and extension block handling
 
 ## Development Status
 
-**Current Phase**: Phase 2 Enhancement - Complete ✓
+**Current Phase**: Phase 3 - PNG Support Complete ✓
 
 **Completed Features**:
 - ✅ JPEG metadata removal with selective preservation (Phase 1 & 2 Enhancement)
+- ✅ PNG metadata removal with selective preservation (Phase 3)
 - ✅ Dry-run mode with grouped, alphabetically sorted metadata preview (Phase 1)
 - ✅ Multiple file processing (Phase 1)
 - ✅ Custom output suffix (Phase 1)
@@ -136,6 +149,9 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
 - ✅ Selective EXIF preservation - keeps technical tags, removes sensitive ones (Phase 2 Enhancement)
 - ✅ Tag classification fixes - MakerNote, GPSInfoIFDPointer, SubSec timestamps, thumbnails (Phase 2 Enhancement)
 - ✅ Alphabetically sorted tag display in dry-run mode (Phase 2 Enhancement)
+- ✅ PNG chunk-based metadata handling (Phase 3)
+- ✅ Text chunk filtering with pattern matching (Phase 3)
+- ✅ PNG EXIF metadata filtering (Phase 3)
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
@@ -147,7 +163,12 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
   - SubSec timestamp fixes ✅
   - Thumbnail tag corruption fixes ✅
   - Alphabetical sorting ✅
-- Phase 3: Extended format support (PNG, WebP, TIFF, GIF)
+- Phase 3: Extended format support 🔄
+  - PNG support ✅
+  - WebP support (next)
+  - HEIC/HEIF support (future)
+  - TIFF support (future)
+  - GIF support (future)
 - Phase 4: Progress indicators and configuration file support
 - Phase 5: Comprehensive testing, benchmarks, and documentation
 
