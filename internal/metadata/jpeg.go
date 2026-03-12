@@ -157,6 +157,9 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 		"MakerNote":            true, // Contains proprietary camera data, often includes serial numbers
 		// GPS pointer
 		"GPSInfoIFDPointer":    true, // Pointer to GPS IFD, removed when GPS IFD is deleted
+		// Thumbnail pointers (can get corrupted during EXIF rebuild)
+		"ThumbJPEGInterchangeFormat":       true,
+		"ThumbJPEGInterchangeFormatLength": true,
 		// Creator/owner info
 		"Artist":               true,
 		"Copyright":            true,
@@ -360,6 +363,10 @@ func (h *JPEGHandler) getSensitiveTagIDs() map[uint16]bool {
 
 		// GPS pointer (gets removed when GPS IFD is deleted)
 		0x8825: true, // GPSInfoIFDPointer
+		
+		// Thumbnail tags (can get corrupted during EXIF rebuild, safer to remove)
+		0x0201: true, // ThumbJPEGInterchangeFormat (thumbnail offset pointer)
+		0x0202: true, // ThumbJPEGInterchangeFormatLength (thumbnail size)
 
 		// Creator/Copyright information
 		0x013B: true, // Artist
