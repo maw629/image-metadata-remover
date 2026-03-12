@@ -20,6 +20,7 @@ type Config struct {
 	files       []string
 	suffix      string
 	verbose     bool
+	dryRun      bool
 }
 
 func main() {
@@ -50,6 +51,7 @@ func parseFlags() Config {
 	flag.BoolVar(&config.showHelp, "h", false, "Show help message (shorthand)")
 	flag.StringVar(&config.suffix, "suffix", "_imr", "Suffix to append to output filenames")
 	flag.BoolVar(&config.verbose, "verbose", false, "Enable verbose output")
+	flag.BoolVar(&config.dryRun, "dry-run", false, "Preview metadata without removing (no output file created)")
 
 	flag.Parse()
 
@@ -74,17 +76,24 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Printf("  %s photo.jpg\n", appName)
+	fmt.Printf("  %s --dry-run photo.jpg\n", appName)
 	fmt.Printf("  %s -suffix _clean photo1.jpg photo2.png\n", appName)
 	fmt.Printf("  %s -verbose images/*.jpg\n", appName)
 	fmt.Println()
 	fmt.Println("Output files will be saved with the specified suffix (default: _imr)")
 	fmt.Println("Example: photo.jpg -> photo_imr.jpg")
+	fmt.Println()
+	fmt.Println("Dry-run mode shows metadata without creating output files")
 }
 
 func run(config Config) error {
 	if config.verbose {
 		fmt.Printf("Processing %d file(s)...\n", len(config.files))
-		fmt.Printf("Output suffix: %s\n", config.suffix)
+		if config.dryRun {
+			fmt.Println("Mode: DRY-RUN (preview only, no files will be modified)")
+		} else {
+			fmt.Printf("Output suffix: %s\n", config.suffix)
+		}
 	}
 
 	// Create processor
@@ -122,6 +131,11 @@ func processFile(filename string, config Config, proc *processor.Processor) erro
 	// Check if file exists
 	if !fileutil.FileExists(filename) {
 		return fmt.Errorf("file not found")
+	}
+
+	// If dry-run mode, preview metadata instead
+	if config.dryRun {
+		return proc.PreviewMetadata(filename)
 	}
 
 	// Generate output path

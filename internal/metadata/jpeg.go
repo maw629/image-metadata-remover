@@ -62,6 +62,120 @@ func (h *JPEGHandler) RemoveMetadata(inputPath, outputPath string) error {
 	return nil
 }
 
+// PreviewMetadata displays the metadata that would be removed
+func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
+	// Open input file
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		return fmt.Errorf("failed to open input file: %w", err)
+	}
+	defer inputFile.Close()
+
+	// Try to decode EXIF data
+	x, err := exif.Decode(inputFile)
+	if err != nil {
+		fmt.Printf("📄 %s\n", inputPath)
+		fmt.Println("   No EXIF metadata found")
+		return nil
+	}
+
+	fmt.Printf("📄 %s\n", inputPath)
+	fmt.Println("   Metadata to be removed:")
+
+	// Track if any sensitive data found
+	foundSensitive := false
+
+	// Check for GPS data
+	if lat, err := x.Get(exif.GPSLatitude); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • GPS Latitude: %v\n", lat)
+	}
+	if lon, err := x.Get(exif.GPSLongitude); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • GPS Longitude: %v\n", lon)
+	}
+	if alt, err := x.Get(exif.GPSAltitude); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • GPS Altitude: %v\n", alt)
+	}
+	if gpsTime, err := x.Get(exif.GPSTimeStamp); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • GPS Timestamp: %v\n", gpsTime)
+	}
+
+	// Check for camera info
+	if make, err := x.Get(exif.Make); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Camera Make: %v\n", make)
+	}
+	if model, err := x.Get(exif.Model); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Camera Model: %v\n", model)
+	}
+	if software, err := x.Get(exif.Software); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Software: %v\n", software)
+	}
+
+	// Check for lens info
+	if lensModel, err := x.Get(exif.LensModel); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Lens Model: %v\n", lensModel)
+	}
+	if lensMake, err := x.Get(exif.LensMake); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Lens Make: %v\n", lensMake)
+	}
+
+	// Check for creator info
+	if artist, err := x.Get(exif.Artist); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Artist: %v\n", artist)
+	}
+	if copyright, err := x.Get(exif.Copyright); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • Copyright: %v\n", copyright)
+	}
+
+	// Check datetime
+	if dateTime, err := x.Get(exif.DateTime); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • DateTime: %v\n", dateTime)
+	}
+	if dateTimeOrig, err := x.Get(exif.DateTimeOriginal); err == nil {
+		foundSensitive = true
+		fmt.Printf("   • DateTime Original: %v\n", dateTimeOrig)
+	}
+
+	// Show preserved metadata
+	fmt.Println("   Metadata to be preserved:")
+	preserved := false
+	
+	if orientation, err := x.Get(exif.Orientation); err == nil {
+		preserved = true
+		fmt.Printf("   • Orientation: %v\n", orientation)
+	}
+	if width, err := x.Get(exif.PixelXDimension); err == nil {
+		preserved = true
+		fmt.Printf("   • Width: %v pixels\n", width)
+	}
+	if height, err := x.Get(exif.PixelYDimension); err == nil {
+		preserved = true
+		fmt.Printf("   • Height: %v pixels\n", height)
+	}
+
+	if !preserved {
+		fmt.Println("   • Image dimensions (inherent)")
+		fmt.Println("   • Color space (inherent)")
+	}
+
+	if !foundSensitive {
+		fmt.Println("   • No sensitive metadata found (will strip all EXIF)")
+	}
+
+	return nil
+}
+
 // getOrientation extracts the orientation tag from EXIF data
 func (h *JPEGHandler) getOrientation(file *os.File) int {
 	x, err := exif.Decode(file)

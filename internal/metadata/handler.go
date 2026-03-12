@@ -6,6 +6,9 @@ type Handler interface {
 	// Returns the path to the output file and any error
 	RemoveMetadata(inputPath, outputPath string) error
 	
+	// PreviewMetadata displays metadata that would be removed
+	PreviewMetadata(inputPath string) error
+	
 	// SupportsFormat returns true if this handler supports the given format
 	SupportsFormat(format string) bool
 }
