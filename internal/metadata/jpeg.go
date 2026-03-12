@@ -81,8 +81,6 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 	}
 
 	fmt.Printf("📄 %s\n", inputPath)
-	fmt.Println("   All EXIF metadata in this image:")
-	fmt.Println()
 
 	// Define sensitive tags that will be removed
 	sensitiveTags := map[string]bool{
@@ -134,16 +132,14 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 		"DateTimeDigitized":    true,
 	}
 
-	// Create a walker to display all tags
-	tagCount := 0
-	sensitiveCount := 0
-	preservedCount := 0
+	// Collect tags into groups
+	var sensitiveList []string
+	var preservedList []string
 
-	walker := &metadataWalker{
+	walker := &metadataCollector{
 		sensitiveTags:   sensitiveTags,
-		tagCount:        &tagCount,
-		sensitiveCount:  &sensitiveCount,
-		preservedCount:  &preservedCount,
+		sensitiveList:   &sensitiveList,
+		preservedList:   &preservedList,
 	}
 
 	// Walk through all EXIF tags
@@ -152,40 +148,54 @@ func (h *JPEGHandler) PreviewMetadata(inputPath string) error {
 		return fmt.Errorf("error walking EXIF tags: %w", err)
 	}
 
+	// Display grouped output
+	fmt.Println("   Metadata to be removed:")
+	if len(sensitiveList) > 0 {
+		for _, tag := range sensitiveList {
+			fmt.Printf("   • %s\n", tag)
+		}
+	} else {
+		fmt.Println("   • None found")
+	}
+
+	fmt.Println()
+	fmt.Println("   Metadata to be preserved:")
+	if len(preservedList) > 0 {
+		for _, tag := range preservedList {
+			fmt.Printf("   • %s\n", tag)
+		}
+	} else {
+		fmt.Println("   • None (will strip all EXIF)")
+	}
+
 	// Summary
 	fmt.Println()
 	fmt.Printf("   Summary: %d total tags (%d sensitive, %d preserved)\n", 
-		tagCount, sensitiveCount, preservedCount)
+		len(sensitiveList)+len(preservedList), len(sensitiveList), len(preservedList))
 	
-	if sensitiveCount == 0 {
+	if len(sensitiveList) == 0 {
 		fmt.Println("   ⚠️  No sensitive metadata found, but all EXIF will be stripped")
 	}
 
 	return nil
 }
 
-// metadataWalker implements the exif.Walker interface
-type metadataWalker struct {
+// metadataCollector implements the exif.Walker interface to collect tags
+type metadataCollector struct {
 	sensitiveTags   map[string]bool
-	tagCount        *int
-	sensitiveCount  *int
-	preservedCount  *int
+	sensitiveList   *[]string
+	preservedList   *[]string
 }
 
-func (w *metadataWalker) Walk(name exif.FieldName, tag *tiff.Tag) error {
-	*w.tagCount++
+func (w *metadataCollector) Walk(name exif.FieldName, tag *tiff.Tag) error {
 	tagName := string(name)
-	isSensitive := w.sensitiveTags[tagName]
-	
-	// Format the tag value
 	tagValue := fmt.Sprintf("%v", tag)
+	tagDisplay := fmt.Sprintf("%s: %s", tagName, tagValue)
 	
-	if isSensitive {
-		*w.sensitiveCount++
-		fmt.Printf("   🔴 %s: %s [WILL BE REMOVED]\n", tagName, tagValue)
+	if w.sensitiveTags[tagName] {
+		*w.sensitiveList = append(*w.sensitiveList, tagDisplay)
 	} else {
-		*w.preservedCount++
-		fmt.Printf("   🟢 %s: %s [PRESERVED]\n", tagName, tagValue)
+		*w.preservedList = append(*w.preservedList, tagDisplay)
 	}
 	
 	return nil
