@@ -127,20 +127,25 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
   - Removes: eXIf chunks with sensitive EXIF data (GPS, device info, timestamps)
   - Removes: tIME chunks (modification timestamps)
   - Preserves: Technical chunks (IHDR, IDAT, PLTE, gAMA, cHRM, sRGB, iCCP, pHYs, etc.)
+- ✅ WebP (.webp) - All case variations supported
+  - RIFF container-based handling
+  - Removes: EXIF chunks with sensitive data (GPS, device info, timestamps)
+  - Removes: XMP chunks with author/location info
+  - Preserves: VP8/VP8L/VP8X image data, ICCP color profiles, ALPH alpha channels, ANIM/ANMF animation
 
 **Planned Support** (Phase 3):
-- 🔜 WebP (.webp) - RIFF container with EXIF/XMP metadata handling
 - 🔜 HEIC/HEIF (.heic, .heif) - Modern smartphone format (complex ISOBMFF container)
 - 🔜 TIFF (.tiff, .tif) - EXIF handling (similar to JPEG)
 - 🔜 GIF (.gif) - Comment and extension block handling
 
 ## Development Status
 
-**Current Phase**: Phase 3 - PNG Support Complete ✓
+**Current Phase**: Phase 3 - PNG & WebP Support Complete ✓
 
 **Completed Features**:
 - ✅ JPEG metadata removal with selective preservation (Phase 1 & 2 Enhancement)
 - ✅ PNG metadata removal with selective preservation (Phase 3)
+- ✅ WebP metadata removal with RIFF container handling (Phase 3)
 - ✅ Dry-run mode with grouped, alphabetically sorted metadata preview (Phase 1)
 - ✅ Multiple file processing (Phase 1)
 - ✅ Custom output suffix (Phase 1)
@@ -152,6 +157,8 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
 - ✅ PNG chunk-based metadata handling (Phase 3)
 - ✅ Text chunk filtering with pattern matching (Phase 3)
 - ✅ PNG EXIF metadata filtering (Phase 3)
+- ✅ WebP RIFF container parsing and reconstruction (Phase 3)
+- ✅ WebP EXIF and XMP metadata removal (Phase 3)
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
@@ -165,7 +172,7 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
   - Alphabetical sorting ✅
 - Phase 3: Extended format support 🔄
   - PNG support ✅
-  - WebP support (next)
+  - WebP support ✅
   - HEIC/HEIF support (future)
   - TIFF support (future)
   - GIF support (future)
