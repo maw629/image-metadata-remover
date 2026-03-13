@@ -17,12 +17,13 @@ func NewProcessor() *Processor {
 	p := &Processor{
 		handlers: make(map[ImageFormat]metadata.Handler),
 	}
-	
+
 	// Register handlers
 	p.handlers[FormatJPEG] = metadata.NewJPEGHandler()
 	p.handlers[FormatPNG] = metadata.NewPNGHandler()
 	p.handlers[FormatWebP] = metadata.NewWebPHandler()
-	
+	p.handlers[FormatHEIC] = metadata.NewHEICHandler()
+
 	return p
 }
 

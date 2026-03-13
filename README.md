@@ -5,7 +5,7 @@ A lean and efficient CLI tool written in Go that removes sensitive metadata from
 ## Features
 
 - 🔒 Remove sensitive metadata (GPS, camera info, personal data)
-- 🖼️ Support for multiple formats: JPEG, PNG, WebP, TIFF, GIF
+- 🖼️ Support for multiple formats: JPEG, PNG, WebP, HEIC/HEIF
 - ⚡ Fast and efficient processing
 - 📦 Zero-dependency binary
 - 🔧 Simple CLI interface
@@ -132,15 +132,18 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
   - Removes: EXIF chunks with sensitive data (GPS, device info, timestamps)
   - Removes: XMP chunks with author/location info
   - Preserves: VP8/VP8L/VP8X image data, ICCP color profiles, ALPH alpha channels, ANIM/ANMF animation
+- ✅ HEIC/HEIF (.heic, .heif) - All case variations supported
+  - Uses `github.com/maw629/heic-meta/pkg/heicmeta`
+  - Removes: sensitive EXIF and XMP metadata
+  - Preserves: HEIC image data (`mdat`) and non-sensitive container structure
 
 **Planned Support** (Phase 3):
-- 🔜 HEIC/HEIF (.heic, .heif) - Modern smartphone format (complex ISOBMFF container)
 - 🔜 TIFF (.tiff, .tif) - EXIF handling (similar to JPEG)
 - 🔜 GIF (.gif) - Comment and extension block handling
 
 ## Development Status
 
-**Current Phase**: Phase 3 - PNG & WebP Support Complete ✓
+**Current Phase**: Phase 3 - PNG, WebP & HEIC/HEIF Support Complete ✓
 
 **Completed Features**:
 - ✅ JPEG metadata removal with selective preservation (Phase 1 & 2 Enhancement)
@@ -159,6 +162,7 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
 - ✅ PNG EXIF metadata filtering (Phase 3)
 - ✅ WebP RIFF container parsing and reconstruction (Phase 3)
 - ✅ WebP EXIF and XMP metadata removal (Phase 3)
+- ✅ HEIC/HEIF metadata removal via heic-meta integration (Phase 3)
 
 **Roadmap**:
 - Phase 0: Project scaffolding and dummy CLI ✅
@@ -173,7 +177,7 @@ The tool uses `github.com/dsoprea/go-exif/v3` for precise EXIF manipulation with
 - Phase 3: Extended format support 🔄
   - PNG support ✅
   - WebP support ✅
-  - HEIC/HEIF support (future)
+  - HEIC/HEIF support ✅
   - TIFF support (future)
   - GIF support (future)
 - Phase 4: Progress indicators and configuration file support
